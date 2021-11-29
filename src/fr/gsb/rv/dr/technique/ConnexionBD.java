@@ -18,6 +18,7 @@ public class ConnexionBD {
     
     private ConnexionBD() throws ConnexionException {
         try {
+            System.out.println("ConnexionBD::ConnexionBD()");
             Class.forName( "org.mariadb.jdbc.Driver" ) ;
             connexion = (Connection) DriverManager.getConnection(dbURL, user, password) ;
         }
@@ -30,6 +31,7 @@ public class ConnexionBD {
         if( connexion == null ){
             new ConnexionBD() ;
         }
+        System.out.println("ConnexionBD::getConnexion() : " + connexion);
         return connexion ;
     }
 }

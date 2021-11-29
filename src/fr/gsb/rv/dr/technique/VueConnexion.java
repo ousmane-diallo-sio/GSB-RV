@@ -29,13 +29,14 @@ public class VueConnexion {
     
     
     
-    public Pair showAndWait(){
+    public Optional showAndWait(){
+                
+        Text matriculeText = new Text();
+        matriculeText.setText("Matricule : ");
         
         Dialog<Pair<String, String>> modalConnexion = new Dialog();
         modalConnexion.setTitle("Connexion");
         modalConnexion.setHeaderText("Saisissez vos informations de connexion");
-        Text matriculeText = new Text();
-        matriculeText.setText("Matricule : ");
         modalConnexion.getDialogPane().setContent(matriculeText);
 
         GridPane grid = new GridPane();
@@ -58,26 +59,20 @@ public class VueConnexion {
         ButtonType btnValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         modalConnexion.getDialogPane().getButtonTypes().addAll(btnValider, ButtonType.CANCEL);
         
-        Optional<Pair<String, String>> resultat = modalConnexion.showAndWait();
-        
-        modalConnexion.setResultConverter(new Callback<ButtonType, Pair<String, String>>(){
-            
-            @Override
-            public Pair<String, String> call(ButtonType btnValider){
-                Callback<ButtonType, Pair<String, String>> callback = new Callback<ButtonType, Pair<String, String>>(){
-                    @Override
-                    public Pair<String, String> call(ButtonType typeButton){
-                        return (typeButton == btnValider) ?
-                            new Pair<String, String>(matricule.getText(), mdp.getText())
-                        : null;
-                    }
-                };
-                return null;
-            }   
+        modalConnexion.setResultConverter( typeButton -> {
+                //System.out.println("VueConnexion::call() : typeButton = " + typeButton);
+                return (typeButton == btnValider) ?
+                    new Pair<String, String>(matricule.getText(), mdp.getText())
+                : 
+                    new Pair<String, String>("button différent", mdp.getText());
             
         });
-        return null;
         
+                
+        Optional<Pair<String, String>> resultat = modalConnexion.showAndWait();
+        System.out.println("VueConnexion::resultat = " + resultat);
+        
+        return resultat;
     }
     
 }

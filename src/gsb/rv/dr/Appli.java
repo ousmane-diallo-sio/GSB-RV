@@ -4,12 +4,18 @@
  */
 package gsb.rv.dr;
 
+import fr.gsb.rv.dr.entites.Praticien;
 import fr.gsb.rv.dr.entites.Visiteur;
 import fr.gsb.rv.dr.modeles.ModeleGsbRv;
 import fr.gsb.rv.dr.technique.ConnexionBD;
 import fr.gsb.rv.dr.technique.ConnexionException;
 import fr.gsb.rv.dr.technique.Session;
 import fr.gsb.rv.dr.technique.VueConnexion;
+import fr.gsb.rv.dr.utilitaires.ComparateurCoefConfiance;
+import fr.gsb.rv.dr.utilitaires.ComparateurCoefNotoriete;
+import fr.gsb.rv.dr.utilitaires.ComparateurDateVisite;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,6 +31,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
@@ -56,8 +63,7 @@ public class Appli extends Application {
                                                 "inner join Visiteur v on s.vis_matricule = t.vis_matricule\n" +
                                                 "and t.jjmmaa = s.jjmmaa and v.vis_matricule = t.vis_matricule\n" +
                                                 "where t.tra_role = 'Délégué' and v.vis_matricule is not null and v.vis_mdp is not null;";
-    
-    
+        
     
     private Text nomMenu;
     private MenuItem itemSeConnecter;
@@ -70,17 +76,40 @@ public class Appli extends Application {
     private boolean sessionActive = false;
     private Text sessionText;
     
-    private VBox accueilLayout = new VBox(new Text("Vue Acceuil"));
-    private VBox consulterLayout = new VBox(new Text("Vue Rapport / consulter"));
-    private VBox hesitantLayout = new VBox(new Text("Vue Praticien / hesitant"));
+    private VBox vueAccueil = new VBox(new Label("Vue accueil"));
+    private VBox vueRapports = new VBox(new Label("Vue Rapport / consulter"));
+    private VBox vuePraticiens = new VBox(new Label("Vue Praticien / hesitant"));
     
-    private HBox navBar = new HBox();
+    private VBox navBar = new VBox();
 
     
     private Visiteur tempVisiteur = new Visiteur("0B001", "BOUAICHI", "Oumayma");
     private static Visiteur visiteur;
     
     public static void main(String[] args) {
+        
+        try{
+            List<Praticien> praticiens = ModeleGsbRv.getPraticiensHesitants();
+            
+            Collections.sort( praticiens, new ComparateurCoefConfiance() );
+            for(Praticien unPraticien : praticiens){
+                //System.out.println(unPraticien);
+            }
+            
+            Collections.sort( praticiens, new ComparateurCoefNotoriete() );
+            for(Praticien unPraticien : praticiens){
+                //System.out.println(unPraticien);
+            }
+            
+            Collections.sort( praticiens, new ComparateurDateVisite() );
+            for(Praticien unPraticien : praticiens){
+                System.out.println(unPraticien);
+            }  
+        } catch(Exception e){
+            System.err.println("Appli::main() : " + e);
+        }
+        
+        
         launch(args);        
     }
     
@@ -97,6 +126,7 @@ public class Appli extends Application {
             itemSeDeconnecter.setDisable(true);
             menuRapports.setDisable(true);
             menuPraticiens.setDisable(true);
+            vueAccueil.toFront();
         }
         
     }
@@ -118,38 +148,31 @@ public class Appli extends Application {
         barreMenu.getMenus().add(menuFichier);
         
         primaryStage.setTitle("(Déconnecté)");
-        navBar.setStyle("-fx-background-color: #333");
        
-        
-        Menu menuAccueil = new Menu("Acceuil");
-        barreMenu.getMenus().add(menuAccueil);
-        
-        menuAccueil.setOnAction(
-                new EventHandler<ActionEvent>(){
-                    @Override
-                    public void handle(ActionEvent event){
-                        accueilLayout.toFront();
-                    }
-                }
-        );
         
         itemSeConnecter.setOnAction(
                 new EventHandler<ActionEvent>(){
                     @Override
                     public void handle(ActionEvent event){
                         
-                        try {
-                            var connexion = ConnexionBD.getConnexion();
-                            visiteur = ModeleGsbRv.seConnecter("t60", "azerty");
-                            System.out.println("Infos de connexion : " + visiteur.toString());
-                        } catch (ConnexionException ex) {
-                            System.out.println("Erreur de connexion");
-                            Logger.getLogger(Appli.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                        
                         VueConnexion vueConnexion = new VueConnexion();
-                        var test = vueConnexion.showAndWait();
-                        System.out.println("Formulaire connexion : " + test);
+                        Optional<Pair<String, String>> reponse = vueConnexion.showAndWait();
+                        
+                        if(reponse.isPresent()){
+                            try {
+                                var connexion = ConnexionBD.getConnexion();
+                                visiteur = ModeleGsbRv.seConnecter(reponse.get().getKey(), reponse.get().getValue());
+                                if(visiteur == null){
+                                    Alert alertQuitter = new Alert(Alert.AlertType.INFORMATION);
+                                    alertQuitter.setTitle("Problème de connexion");
+                                    alertQuitter.setHeaderText("Identifiants incorrects, réessayer.");
+                                    alertQuitter.showAndWait();
+
+                                }
+                            } catch (ConnexionException ex) {
+                                Logger.getLogger(Appli.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                        }
                         
                         Session.ouvrir(tempVisiteur);
                         primaryStage.setTitle(visiteur.getNom() + " " + visiteur.getPrenom());
@@ -214,7 +237,7 @@ public class Appli extends Application {
                     @Override
                     public void handle(ActionEvent event){
                         nomMenu.setText("Consulter");
-                        consulterLayout.toFront();
+                        vueRapports.toFront();
                         var visiteur = Session.getSession().getLeVisiteur();
                         //System.out.println("[Rapports]" + visiteur.getPrenom() + " " + visiteur.getNom());
                     }
@@ -231,7 +254,7 @@ public class Appli extends Application {
                     @Override
                     public void handle(ActionEvent event){
                         nomMenu.setText("Hésitants");
-                       hesitantLayout.toFront();
+                       vuePraticiens.toFront();
                         var visiteur = Session.getSession().getLeVisiteur();
                         //System.out.println("[Praticiens]" + visiteur.getPrenom() + " " + visiteur.getNom());
                     }
@@ -241,26 +264,25 @@ public class Appli extends Application {
         
         
         Button btnAccueil = new Button("Retour vers l'accueil");
-        btnAccueil.setStyle("-fx-pref-height: 100%");
         btnAccueil.setOnAction(e -> {
-            accueilLayout.toFront();
+            vueAccueil.toFront();
         });
         
         BorderPane root = new BorderPane();
-        navBar.getChildren().add(btnAccueil);
         navBar.getChildren().add(barreMenu);
+        navBar.getChildren().add(btnAccueil);
         root.setTop(navBar);
         Scene scene = new Scene(root, 600, 350);
         
         StackPane mainLayout = new StackPane();
         
-        accueilLayout.setStyle("-fx-background-color: #f00");
-        mainLayout.getChildren().add(accueilLayout);
-        consulterLayout.setStyle("-fx-background-color: #0f0");
-        mainLayout.getChildren().add(consulterLayout);
-        hesitantLayout.setStyle("-fx-background-color: #00f");
-        mainLayout.getChildren().add(hesitantLayout);
-        accueilLayout.toFront();
+        vueAccueil.setStyle("-fx-background-color: #fff");
+        mainLayout.getChildren().add(vueAccueil);
+        vueRapports.setStyle("-fx-background-color: #fff");
+        mainLayout.getChildren().add(vueRapports);
+        vuePraticiens.setStyle("-fx-background-color: #fff");
+        mainLayout.getChildren().add(vuePraticiens);
+        vueAccueil.toFront();
 
         
         BorderPane.setAlignment(mainLayout, Pos.CENTER);
@@ -269,13 +291,11 @@ public class Appli extends Application {
         
         nomMenu = new Text();
         nomMenu.setText("rien");
-        mainLayout.getChildren().add(nomMenu);
-        mainLayout.setAlignment(nomMenu, Pos.CENTER);
+        vueAccueil.getChildren().add(nomMenu);
         
         sessionText = new Text();
         sessionText.setText("session : null");
-        mainLayout.getChildren().add(sessionText);
-        StackPane.setAlignment(sessionText, Pos.BOTTOM_CENTER);
+        vueAccueil.getChildren().add(sessionText);
         
         primaryStage.setScene(scene);
         primaryStage.show();
