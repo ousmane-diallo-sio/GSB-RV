@@ -24,9 +24,11 @@ public class ModeleGsbRv {
         
         Connection connexion = ConnexionBD.getConnexion() ;
         
-        String requete = "select vis_nom, vis_prenom "
-                + "from Visiteur "
-                + "where vis_matricule = ? and vis_mdp = ?" ;
+        String requete = "select * from Travailler t" 
+                +"inner join Visiteur v on v.vis_matricule = t.vis_matricule" 
+                +"inner join(select vis_matricule, max(jjmmaa) jjmmaa from Travailler group by vis_matricule) as s" 
+                +"on t.vis_matricule = s.vis_matricule and t.jjmmaa = s.jjmmaa where tra_role = 'Délégué';"
+                +"and where vis_matricule = ? and vis_mdp = ?";
         
         try {
             PreparedStatement requetePreparee = (PreparedStatement) connexion.prepareStatement( requete ) ;

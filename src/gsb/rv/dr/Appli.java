@@ -9,6 +9,9 @@ import fr.gsb.rv.dr.entites.Visiteur;
 import fr.gsb.rv.dr.modeles.ModeleGsbRv;
 import fr.gsb.rv.dr.technique.ConnexionBD;
 import fr.gsb.rv.dr.technique.ConnexionException;
+import fr.gsb.rv.dr.technique.PanneauAccueil;
+import fr.gsb.rv.dr.technique.PanneauPraticiens;
+import fr.gsb.rv.dr.technique.PanneauRapports;
 import fr.gsb.rv.dr.technique.Session;
 import fr.gsb.rv.dr.technique.VueConnexion;
 import fr.gsb.rv.dr.utilitaires.ComparateurCoefConfiance;
@@ -57,7 +60,7 @@ import javafx.scene.layout.VBox;
 public class Appli extends Application {
     
     private final String sqlGetDelegue = "select vis_nom, Visiteur.vis_matricule, tra_role from Visiteur inner join Travailler on Visiteur.vis_matricule = Travailler.vis_matricule where tra_role like 'Délégué';";
-    private final String sqlGetDelegueActuels = "select t.vis_matricule, t.jjmmaa, t.tra_role from Travailler t inner join(select vis_matricule, max(jjmmaa) jjmmaa from Travailler group by vis_matricule) as s on t.vis_matricule = s.vis_matricule and t.jjmmaa = s.jjmmaa where tra_role = 'Délégué';";
+    private final String sqlGetDelegueActuels = "select * from Travailler t inner join(select vis_matricule, max(jjmmaa) jjmmaa from Travailler group by vis_matricule) as s on t.vis_matricule = s.vis_matricule and t.jjmmaa = s.jjmmaa where tra_role = 'Délégué';";
     private final String sqlGetAllFromDelegue = "select * from Travailler t\n" +
                                                 "inner join ( select tra_role, vis_matricule, max(jjmmaa) jjmmaa from Travailler group by vis_matricule ) s\n" +
                                                 "inner join Visiteur v on s.vis_matricule = t.vis_matricule\n" +
@@ -66,6 +69,7 @@ public class Appli extends Application {
         
     
     private Text nomMenu;
+    private MenuItem itemAccueil;
     private MenuItem itemSeConnecter;
     private MenuItem itemSeDeconnecter;
     
@@ -76,14 +80,13 @@ public class Appli extends Application {
     private boolean sessionActive = false;
     private Text sessionText;
     
-    private VBox vueAccueil = new VBox(new Label("Vue accueil"));
-    private VBox vueRapports = new VBox(new Label("Vue Rapport / consulter"));
-    private VBox vuePraticiens = new VBox(new Label("Vue Praticien / hesitant"));
+    private PanneauAccueil vueAccueil = new PanneauAccueil(new Label("Vue accueil"));
+    private PanneauRapports vueRapports = new PanneauRapports(new Label("Vue Rapport / consulter"));
+    private PanneauPraticiens vuePraticiens = new PanneauPraticiens(new Label("Vue Praticien / hesitant"));
     
     private VBox navBar = new VBox();
 
     
-    private Visiteur tempVisiteur = new Visiteur("0B001", "BOUAICHI", "Oumayma");
     private static Visiteur visiteur;
     
     public static void main(String[] args) {
@@ -103,10 +106,10 @@ public class Appli extends Application {
             
             Collections.sort( praticiens, new ComparateurDateVisite() );
             for(Praticien unPraticien : praticiens){
-                System.out.println(unPraticien);
+                //System.out.println(unPraticien);
             }  
         } catch(Exception e){
-            System.err.println("Appli::main() : " + e);
+            //System.err.println("Appli::main() : " + e);
         }
         
         
@@ -125,7 +128,7 @@ public class Appli extends Application {
             itemSeConnecter.setDisable(false);
             itemSeDeconnecter.setDisable(true);
             menuRapports.setDisable(true);
-            menuPraticiens.setDisable(true);
+            menuPraticiens.setDisable(true);            
             vueAccueil.toFront();
         }
         
@@ -138,13 +141,14 @@ public class Appli extends Application {
         MenuBar barreMenu = new MenuBar();
         
         Menu menuFichier = new Menu("Fichier");
+        itemAccueil = new MenuItem("Accueil");
         itemSeConnecter = new MenuItem("Se connecter");
         itemSeDeconnecter = new MenuItem("Se déconnecter");
         MenuItem itemQuitter = new MenuItem("Quitter");
         menuFichier.getItems().add(new SeparatorMenuItem());
         KeyCombination kc = new KeyCodeCombination(KeyCode.X, KeyCombination.CONTROL_DOWN);
         itemQuitter.setAccelerator(kc);
-        menuFichier.getItems().addAll(itemSeConnecter, itemSeDeconnecter, itemQuitter);
+        menuFichier.getItems().addAll(itemSeConnecter, itemSeDeconnecter, itemAccueil, itemQuitter);
         barreMenu.getMenus().add(menuFichier);
         
         primaryStage.setTitle("(Déconnecté)");
@@ -162,19 +166,40 @@ public class Appli extends Application {
                             try {
                                 var connexion = ConnexionBD.getConnexion();
                                 visiteur = ModeleGsbRv.seConnecter(reponse.get().getKey(), reponse.get().getValue());
-                                if(visiteur == null){
-                                    Alert alertQuitter = new Alert(Alert.AlertType.INFORMATION);
+                                Alert alertQuitter = new Alert(Alert.AlertType.INFORMATION);
+                                if( visiteur == null && reponse.get().getKey() != "0" ){
                                     alertQuitter.setTitle("Problème de connexion");
                                     alertQuitter.setHeaderText("Identifiants incorrects, réessayer.");
                                     alertQuitter.showAndWait();
-
+                                    reponse = vueConnexion.showAndWait();
+                                } else if( reponse.get().getKey() == "0" ){
+                                    try{
+                                        alertQuitter.setTitle("Connexion");
+                                        alertQuitter.setHeaderText("Se connecter");
+                                        alertQuitter.setContentText("Annulation...");
+                                        Thread thread = new Thread(() -> {
+                                            try {
+                                                Thread.sleep(500);
+                                                if (alertQuitter.isShowing()) {
+                                                    Platform.runLater(() -> alertQuitter.close());
+                                                }
+                                            } catch (Exception exp) {
+                                                exp.printStackTrace();
+                                            }
+                                        });
+                                        thread.setDaemon(true);
+                                        thread.start();
+                                        alertQuitter.showAndWait();
+                                    } catch(Exception e){
+                                        System.err.println("Appli::itemSeConnecter : "+ e);
+                                    }
                                 }
                             } catch (ConnexionException ex) {
                                 Logger.getLogger(Appli.class.getName()).log(Level.SEVERE, null, ex);
                             }
                         }
                         
-                        Session.ouvrir(tempVisiteur);
+                        Session.ouvrir(visiteur);
                         primaryStage.setTitle(visiteur.getNom() + " " + visiteur.getPrenom());
                         sessionActive = true;
                         sessionText.setText("Connecté");
@@ -261,26 +286,17 @@ public class Appli extends Application {
                 }
         );  
         handleMenu();
-        
-        
-        Button btnAccueil = new Button("Retour vers l'accueil");
-        btnAccueil.setOnAction(e -> {
-            vueAccueil.toFront();
-        });
+
         
         BorderPane root = new BorderPane();
         navBar.getChildren().add(barreMenu);
-        navBar.getChildren().add(btnAccueil);
         root.setTop(navBar);
         Scene scene = new Scene(root, 600, 350);
         
         StackPane mainLayout = new StackPane();
         
-        vueAccueil.setStyle("-fx-background-color: #fff");
-        mainLayout.getChildren().add(vueAccueil);
-        vueRapports.setStyle("-fx-background-color: #fff");
+        mainLayout.getChildren().add(vueAccueil);       
         mainLayout.getChildren().add(vueRapports);
-        vuePraticiens.setStyle("-fx-background-color: #fff");
         mainLayout.getChildren().add(vuePraticiens);
         vueAccueil.toFront();
 

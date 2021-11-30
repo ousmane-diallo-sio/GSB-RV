@@ -5,6 +5,7 @@
 package fr.gsb.rv.dr.technique;
 
 import java.util.Optional;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -25,9 +26,8 @@ public class VueConnexion {
 
     
     public VueConnexion(){
+        
     }
-    
-    
     
     public Optional showAndWait(){
                 
@@ -46,6 +46,7 @@ public class VueConnexion {
         
         TextField matricule = new TextField();
         matricule.setPromptText("Matricule");
+        Platform.runLater(() -> matricule.requestFocus());
         PasswordField mdp = new PasswordField();
         mdp.setPromptText("Mot de passe");
 
@@ -64,13 +65,13 @@ public class VueConnexion {
                 return (typeButton == btnValider) ?
                     new Pair<String, String>(matricule.getText(), mdp.getText())
                 : 
-                    new Pair<String, String>("button différent", mdp.getText());
+                    new Pair<String, String>("0", "Annulation de la connexion...");
             
         });
         
                 
         Optional<Pair<String, String>> resultat = modalConnexion.showAndWait();
-        System.out.println("VueConnexion::resultat = " + resultat);
+        //System.out.println("VueConnexion::resultat = " + resultat);
         
         return resultat;
     }
