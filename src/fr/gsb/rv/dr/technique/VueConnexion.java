@@ -7,6 +7,7 @@ package fr.gsb.rv.dr.technique;
 import java.util.Optional;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
@@ -59,6 +60,13 @@ public class VueConnexion {
         
         ButtonType btnValider = new ButtonType("Valider", ButtonBar.ButtonData.OK_DONE);
         modalConnexion.getDialogPane().getButtonTypes().addAll(btnValider, ButtonType.CANCEL);
+        
+        Node loginButton = modalConnexion.getDialogPane().lookupButton(btnValider);
+        loginButton.setDisable(true);
+        
+        matricule.textProperty().addListener((observable, oldValue, newValue) -> {
+        loginButton.setDisable(newValue.trim().isEmpty());
+        });
         
         modalConnexion.setResultConverter( typeButton -> {
                 //System.out.println("VueConnexion::call() : typeButton = " + typeButton);

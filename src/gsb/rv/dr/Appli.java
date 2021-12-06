@@ -107,7 +107,12 @@ public class Appli extends Application {
             Collections.sort( praticiens, new ComparateurDateVisite() );
             for(Praticien unPraticien : praticiens){
                 //System.out.println(unPraticien);
-            }  
+            }
+            
+            //System.out.println(ModeleGsbRv.getVisiteurs());
+            //System.out.println(ModeleGsbRv.getRapportVisite("t60", 11, 2021));
+            //ModeleGsbRv.setRapportVisiteLu("c14", 2);
+            
         } catch(Exception e){
             //System.err.println("Appli::main() : " + e);
         }
@@ -153,6 +158,14 @@ public class Appli extends Application {
         
         primaryStage.setTitle("(Déconnecté)");
        
+        itemAccueil.setOnAction(
+                new EventHandler<ActionEvent>(){
+                    @Override
+                    public void handle(ActionEvent event){
+                        vueAccueil.toFront(); 
+                    }
+                }
+        );
         
         itemSeConnecter.setOnAction(
                 new EventHandler<ActionEvent>(){
@@ -291,7 +304,7 @@ public class Appli extends Application {
         BorderPane root = new BorderPane();
         navBar.getChildren().add(barreMenu);
         root.setTop(navBar);
-        Scene scene = new Scene(root, 600, 350);
+        Scene scene = new Scene(root, 750, 400);
         
         StackPane mainLayout = new StackPane();
         
